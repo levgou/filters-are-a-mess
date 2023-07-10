@@ -1,93 +1,177 @@
-import "./FiltersComponent.css";
-import { useState } from "react";
-import { FilterType } from "./api/filters";
+import './FiltersComponent.css'
+import { CSSProperties, useEffect, useState } from 'react'
+import { FixedSizeList as List, ListOnItemsRenderedProps } from 'react-window'
 
-export default function FiltersComponent({
-  filters,
-}: {
-  filters: FilterType[];
-}) {
-  const [pendingFilters, setPendingFilters] = useState<FilterType[]>(filters);
+let selectedFilters = new Uint8Array(0)
+let changes = new Uint8Array(0)
+let commited = new Uint8Array(0)
+
+let visibleItems: ListOnItemsRenderedProps = {
+  overscanStartIndex: 0,
+  overscanStopIndex: 0,
+  visibleStartIndex: 0,
+  visibleStopIndex: 0,
+}
+
+const setChange = (index: number, value: number) => {
+  if (value === commited[index]) {
+    changes[index] = 0
+  } else {
+    changes[index] = 1
+  }
+}
+
+export default function FiltersComponent({ filters }: { filters: Uint8Array }) {
+  const [dirty, setDirty] = useState(false)
+  const [allOverride, setAllOverride] = useState(-1)
+
+  useEffect(() => {
+    selectedFilters = new Uint8Array(filters.length)
+    selectedFilters.fill(0)
+    changes = new Uint8Array(filters.length)
+    changes.fill(0)
+
+    for (let i = 0; i < filters.length; i++) {
+      if (filters[i] === 1) {
+        selectedFilters[i] = 1
+      }
+    }
+    commited = new Uint8Array(selectedFilters)
+    setDirty(!dirty)
+  }, [filters.length])
+
+  let allSelected = true
+  for (let i = 0; i < selectedFilters.length; i++) {
+    if (selectedFilters[i] === 0) {
+      allSelected = false
+      break
+    }
+  }
+  let changesExist = false
+  for (let i = 0; i < selectedFilters.length; i++) {
+    if (changes[i] === 1) {
+      changesExist = true
+      break
+    }
+  }
 
   const onApply = () => {
-    console.log("changes applied");
-  };
-
-  const hasChanges = !pendingFilters.every(
-    (item) =>
-      filters.find((serverItem) => serverItem.id === item.id).checked ===
-      item.checked
-  );
-
-  const allSelected = pendingFilters.every((filter) => filter.checked);
-
-  const setAllFilters = (checked: boolean) => {
-    setPendingFilters(pendingFilters.map((f) => ({ ...f, checked })));
-  };
-
-  const onFilterSelected = (id, checked) => {
-    setPendingFilters(
-      pendingFilters.map((f) => (f.id === id ? { ...f, checked } : f))
-    );
-  };
+    commited = new Uint8Array(selectedFilters)
+    changes.fill(0)
+    setDirty(!dirty)
+    console.log('changes applied')
+  }
 
   const onSelectAll = () => {
-    setAllFilters(!allSelected);
-  };
+    const val = allSelected ? 0 : 1
+    console.log('select all', val)
+
+    console.log('visibleItems', visibleItems)
+    for (
+      let i = visibleItems.visibleStartIndex;
+      i <= visibleItems.visibleStopIndex;
+      i++
+    ) {
+      selectedFilters[i] = val
+      setChange(i, val)
+    }
+    setAllOverride(val)
+
+    setTimeout(() => {
+      const n = Date.now()
+      console.log('Background update of non visible start')
+      for (let i = 0; i < selectedFilters.length; i++) {
+        if (selectedFilters[i] === val) {
+          continue
+        }
+        selectedFilters[i] = val
+        setChange(i, val)
+      }
+      setAllOverride(-1)
+      console.log('Background update of non visible end', Date.now() - n)
+    }, 10)
+  }
+
+  const onClick = (index: number) => {
+    if (index >= 0) {
+      selectedFilters[index] = 1 - selectedFilters[index]
+      setChange(index, selectedFilters[index])
+      setDirty(!dirty)
+    } else {
+      onSelectAll()
+    }
+  }
 
   return (
     <div className="app-container">
       <h2>Apply Filters</h2>
-      <div className="filters-container">
-        <Filter
-          checked={allSelected}
-          label="Select All"
-          onChange={onSelectAll}
-        />
-        {pendingFilters.map((filter) => (
-          <Filter
-            key={filter.id}
-            checked={filter.checked}
-            id={filter.id}
-            label={filter.displayName}
-            onChange={onFilterSelected}
-          />
-        ))}
-      </div>
+      <List
+        height={300}
+        width={397}
+        itemCount={filters.length + 1}
+        itemSize={40}
+        onItemsRendered={(props) => {
+          console.log('onItemsRendered', props)
+          visibleItems = props
+        }}
+      >
+        {({ index, style }) =>
+          index === 0 ? (
+            <Filter
+              style={style}
+              id={'all'}
+              checked={allOverride >= 0 ? !!allOverride : allSelected}
+              label="Select All"
+              index={-1}
+              onChange={onClick}
+            />
+          ) : (
+            <Filter
+              style={style}
+              key={`${filters[index - 1]}`}
+              checked={selectedFilters[index - 1] === 1}
+              id={`${filters[index - 1]}`}
+              label={`name ${filters[index - 1]}`}
+              index={index - 1}
+              onChange={onClick}
+            />
+          )
+        }
+      </List>
       <button
         className="apply-button"
-        disabled={!hasChanges}
+        disabled={!changesExist}
         onClick={() => onApply()}
       >
         Apply Filters
       </button>
     </div>
-  );
+  )
 }
 
 const Filter = ({
   id,
-  checked = false,
-  label = "",
+  label = '',
   onChange,
+  style,
+  index,
+  checked,
 }: {
-  id: string;
-  checked?: boolean;
-  label?: string;
-  onChange?: (id: string, checked: boolean) => void;
-} = {}) => {
+  id: string
+  checked?: boolean
+  label?: string
+  onChange?: (index: number) => void
+  index: number
+  style: CSSProperties
+}) => {
+  const onClick = () => onChange?.(index)
+
   return (
-    <div
-      className="filter"
-      onClick={() => onChange?.(id, !checked)}
-      data-testid={`filter-${id}`}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={() => onChange?.(id, !checked)}
-      />
-      <span>{label}</span>
+    <div style={style}>
+      <div className="filter" onClick={onClick} data-testid={`filter-${id}`}>
+        <input type="checkbox" checked={checked} onChange={onClick} />
+        <span>{label}</span>
+      </div>
     </div>
-  );
-};
+  )
+}

@@ -6,6 +6,6 @@ import { getFilters } from "./api/filters";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <FiltersComponent filters={getFilters(100)} />
+    <FiltersComponent filters={getFilters(100_000_000)} />
   </React.StrictMode>
 );

@@ -1,18 +1,19 @@
-import { faker } from "@faker-js/faker";
+export type FilterType = { id: string; displayName: string; checked: boolean }
 
-export type FilterType = { id: string; displayName: string; checked: boolean };
+const booleanRandom = (index: number) => {
+  if (index % 7 === 0 || index % 3 === 0) {
+    return 1
+  }
+  return 0
+}
 
 export const getFilters: (
   amount?: number,
   allSelected?: boolean
-) => FilterType[] = (amount = 100, allSelected = false) => {
-  const response = [];
+) => Uint8Array = (amount = 100, allSelected = false) => {
+  const checked = new Uint8Array(amount)
   for (let i = 0; i < amount; i++) {
-    response.push({
-      id: faker.string.uuid(),
-      displayName: faker.person.fullName(),
-      checked: allSelected || faker.datatype.boolean(),
-    });
+    checked[i] = allSelected ? 1 : booleanRandom(i)
   }
-  return response;
-};
+  return checked
+}

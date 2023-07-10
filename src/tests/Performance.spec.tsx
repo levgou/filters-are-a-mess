@@ -7,8 +7,8 @@ const performanceBenchmarks = [
   { filterCount: 1000, displayName: "small data count [1,000] - ⭐ " },
   { filterCount: 25000, displayName: "medium data count [25,000] - ⭐ ⭐ " },
   {
-    filterCount: 100000,
-    displayName: "large data count [100,000] - ⭐ ⭐ ⭐ ",
+    filterCount: 1_000_000,
+    displayName: "large data count [1,000,000] - ⭐ ⭐ ⭐ ",
   },
 ];
 

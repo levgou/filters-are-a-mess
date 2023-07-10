@@ -13,8 +13,8 @@ export const setupComponent = ({
   const user = userEvent.setup();
 
   const getFilterElement = async (index = 0) => {
-    const selectedFilter = filters[index];
-    return screen.findByTestId(`filter-${selectedFilter.id}`);
+    // const selectedFilter = filters[index];
+    return screen.findByTestId(`filter-${index}`);
   };
 
   const clickFilter = async (index = 0) => {
